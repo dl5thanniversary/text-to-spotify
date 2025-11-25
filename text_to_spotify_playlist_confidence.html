@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Text → Spotify Playlist</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: dark;
+      --card: #0b0c16;
+      --card-alt: #111322;
+      --accent: #1db954;
+      --accent-soft: rgba(29, 185, 84, 0.12);
+      --border: #26283a;
+      --text: #f8f8ff;
+      --muted: #a4a8c3;
+      --danger: #ff6b81;
+    }
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #9ecbff 0, #a98cff 40%, #1f1633 100%);
+      color: var(--text);
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1080px;
+      margin: auto;
+      background: rgba(5,6,16,0.95);
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.85);
+      padding: 18px 18px 14px;
+      backdrop-filter: blur(18px);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .title h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .title p {
+      margin: 2px 0 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 2.1fr) minmax(0, 3fr);
+      gap: 14px;
+    }
+    @media (max-width: 899px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    .left-column, .right-column {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    section.card {
+      padding: 10px 11px 9px;
+      border-radius: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+    section.card.alt {
+      background: var(--card-alt);
+    }
+
+    section.card h2 {
+      margin: 0 0 3px;
+      font-size: 0.9rem;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+    section.card p {
+      margin: 0 0 6px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: var(--accent);
+      color: #020308;
+      box-shadow: 0 10px 22px rgba(9, 241, 115, 0.25);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 110ms ease, box-shadow 110ms ease, filter 110ms ease;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.04);
+      box-shadow: 0 13px 26px rgba(9, 241, 115, 0.35);
+    }
+    .btn:active {
+      transform: translateY(1px) scale(0.98);
+      box-shadow: 0 6px 16px rgba(9,241,115,0.3);
+    }
+    .btn.secondary {
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      box-shadow: none;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn.secondary:hover {
+      background: rgba(255,255,255,0.08);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .status {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .status span.ok { color: var(--accent); }
+    .status span.bad { color: var(--danger); }
+
+    input[type="file"] {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .file-hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 3px;
+      padding: 5px 7px;
+      border-radius: 7px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .table-wrapper {
+      margin-top: 6px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+      overflow: hidden;
+      background: rgba(4,4,8,0.9);
+      max-height: 430px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+    }
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: rgba(4,4,8,0.96);
+      backdrop-filter: blur(14px);
+    }
+    th, td {
+      padding: 5px 7px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    th {
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-size: 0.7rem;
+    }
+    tbody tr:nth-child(even) {
+      background: rgba(0,0,0,0.18);
+    }
+
+    .song-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      transition: opacity 120ms ease, background 120ms ease;
+    }
+    .song-status-pill.matched {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .song-status-pill.pending {
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+    }
+    .song-status-pill.not-found {
+      background: rgba(255, 118, 137, 0.12);
+      color: var(--danger);
+    }
+    .song-status-pill.error {
+      background: rgba(255, 194, 102, 0.12);
+      color: #ffd27a;
+    }
+    .song-status-pill.below-threshold {
+      opacity: 0.4;
+    }
+
+    .hidden { display: none; }
+
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .input-row input[type="text"] {
+      flex: 1 1 220px;
+      min-width: 160px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(4,5,12,0.96);
+      color: var(--text);
+      font-size: 0.82rem;
+      outline: none;
+    }
+    .input-row input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(29,185,84,0.6);
+    }
+
+    .slider-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .slider-row label {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 180px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.7);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.7);
+    }
+
+    .tiny {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    footer {
+      margin-top: 10px;
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-align: right;
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      align-items: center;
+    }
+    .badge {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <h1>Text → Playlist</h1>
+        <p>Import songs from a text file and send them to Spotify.</p>
+      </div>
+      <div class="pill">Spotify Web API · PKCE</div>
+    </header>
+
+    <div class="layout">
+      <div class="left-column">
+        <!-- Auth -->
+        <section id="authSection" class="card">
+          <h2>CONNECT</h2>
+          <p>Log in with Spotify.</p>
+          <div class="row">
+            <button id="connectSpotifyBtn" class="btn">
+              <span>Connect</span>
+            </button>
+            <div class="status" id="authStatus">Not connected.</div>
+          </div>
+        </section>
+
+        <!-- Upload -->
+        <section id="uploadSection" class="card alt">
+          <h2>TRACKS</h2>
+          <p>Upload a .txt file, one song per line.</p>
+          <input type="file" id="fileInput" accept=".txt,text/plain" />
+          <div class="file-hint">
+            Format example:
+            <br />Artist - Track Title
+          </div>
+          <div class="status" id="fileStatus"></div>
+        </section>
+
+        <!-- Playlist -->
+        <section id="playlistSection" class="card hidden">
+          <h2>PLAYLIST</h2>
+          <p>Set a confidence threshold and create the playlist.</p>
+          <div class="slider-row">
+            <label for="confidenceSlider">Min confidence</label>
+            <input
+              type="range"
+              id="confidenceSlider"
+              min="0"
+              max="100"
+              value="80"
+            />
+            <span id="confidenceValue">80%</span>
+          </div>
+          <div class="tiny" id="confidenceSummary"></div>
+
+          <div class="input-row">
+            <input
+              type="text"
+              id="playlistNameInput"
+              placeholder="Playlist name"
+            />
+            <button id="createPlaylistBtn" class="btn">
+              Create
+            </button>
+          </div>
+          <div class="status" id="playlistStatus"></div>
+          <p class="tiny">
+            Only songs at or above the slider value are added.
+          </p>
+        </section>
+      </div>
+
+      <div class="right-column">
+        <!-- Songs preview -->
+        <section id="songsSection" class="card alt hidden">
+          <h2>MATCHES</h2>
+          <p>Review matches and confidence.</p>
+          <div class="row" style="justify-content: space-between; align-items: center;">
+            <div class="status">
+              <span id="songCount">0</span> songs
+            </div>
+            <button id="matchSongsBtn" class="btn secondary">
+              Match on Spotify
+            </button>
+          </div>
+
+          <div class="table-wrapper">
+            <table id="songsTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Line</th>
+                  <th>Title</th>
+                  <th>Artist</th>
+                  <th>Match</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <p class="tiny" id="matchingHint"></p>
+        </section>
+      </div>
+    </div>
+
+    <footer>
+      <span class="badge">Unofficial</span>
+      <span>Uses Spotify’s public Web API.</span>
+    </footer>
+  </div>
+
+  <script>
+    // CONFIG
+    var CLIENT_ID = "597687e0b0aa49ea8f6152cf24de2e51";
+    var REDIRECT_URI = "http://127.0.0.1:5500/text_to_spotify_playlist_confidence.html";
+    var SCOPES = "playlist-modify-public playlist-modify-private user-read-private";
+
+    var TOKEN_STORAGE_KEY = "text2spotify_token_v2";
+    var STATE_STORAGE_KEY = "text2spotify_state_v2";
+    var VERIFIER_STORAGE_KEY = "text2spotify_verifier_v2";
+
+    var accessToken = null;
+    var refreshToken = null;
+    var tokenExpiresAt = 0;
+    var confidenceThreshold = 0.8; // default 80%
+
+    // DOM
+    var connectBtn = document.getElementById("connectSpotifyBtn");
+    var authStatusEl = document.getElementById("authStatus");
+    var fileInput = document.getElementById("fileInput");
+    var fileStatusEl = document.getElementById("fileStatus");
+    var songsSection = document.getElementById("songsSection");
+    var playlistSection = document.getElementById("playlistSection");
+    var songsTableBody = document.querySelector("#songsTable tbody");
+    var songCountEl = document.getElementById("songCount");
+    var matchSongsBtn = document.getElementById("matchSongsBtn");
+    var matchingHintEl = document.getElementById("matchingHint");
+    var playlistNameInput = document.getElementById("playlistNameInput");
+    var createPlaylistBtn = document.getElementById("createPlaylistBtn");
+    var playlistStatusEl = document.getElementById("playlistStatus");
+    var confidenceSlider = document.getElementById("confidenceSlider");
+    var confidenceValueEl = document.getElementById("confidenceValue");
+    var confidenceSummaryEl = document.getElementById("confidenceSummary");
+
+    // PKCE helpers
+    function generateRandomString(length) {
+      var array = new Uint8Array(length);
+      window.crypto.getRandomValues(array);
+      var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      var result = "";
+      for (var i = 0; i < array.length; i++) {
+        result += chars.charAt(array[i] % chars.length);
+      }
+      return result;
+    }
+
+    function sha256(plain) {
+      var encoder = new TextEncoder();
+      var data = encoder.encode(plain);
+      return window.crypto.subtle.digest("SHA-256", data);
+    }
+
+    function base64UrlEncode(buffer) {
+      var bytes = new Uint8Array(buffer);
+      var binary = "";
+      for (var i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+    }
+
+    function generateCodeChallenge(codeVerifier) {
+      return sha256(codeVerifier).then(function(digest) {
+        return base64UrlEncode(digest);
+      });
+    }
+
+    // Token storage
+    function loadStoredToken() {
+      try {
+        var raw = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+        if (!raw) return;
+        var data = JSON.parse(raw);
+        if (data.access_token && data.expires_at) {
+          accessToken = data.access_token;
+          refreshToken = data.refresh_token || null;
+          tokenExpiresAt = data.expires_at;
+        }
+      } catch (err) {
+        console.warn("Failed to parse stored token", err);
+      }
+    }
+
+    function storeToken(tokenResponse) {
+      var now = Date.now();
+      var expiresInMs = (tokenResponse.expires_in || 3600) * 1000;
+      accessToken = tokenResponse.access_token;
+      refreshToken = tokenResponse.refresh_token || refreshToken || null;
+      tokenExpiresAt = now + expiresInMs;
+
+      var toStore = {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_at: tokenExpiresAt
+      };
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(toStore));
+      updateAuthStatusUI();
+    }
+
+    function refreshAccessTokenIfNeeded() {
+      var now = Date.now();
+      if (accessToken && now < tokenExpiresAt - 60000) {
+        return Promise.resolve(accessToken);
+      }
+      if (!refreshToken) {
+        loadStoredToken();
+        if (accessToken && Date.now() < tokenExpiresAt - 60000) {
+          return Promise.resolve(accessToken);
+        }
+      }
+      if (!refreshToken) {
+        return Promise.resolve(null);
+      }
+
+      var params = new URLSearchParams();
+      params.set("grant_type", "refresh_token");
+      params.set("refresh_token", refreshToken);
+      params.set("client_id", CLIENT_ID);
+
+      return fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: params.toString()
+      }).then(function(res) {
+        if (!res.ok) {
+          return res.text().then(function(t) {
+            console.error("Failed to refresh token", t);
+            return null;
+          });
+        }
+        return res.json().then(function(data) {
+          storeToken(data);
+          return accessToken;
+        });
+      }).catch(function(err) {
+        console.error("Token refresh error", err);
+        return null;
+      });
+    }
+
+    function getAccessTokenOrPrompt() {
+      return refreshAccessTokenIfNeeded().then(function(token) {
+        if (!token) {
+          authStatusEl.innerHTML =
+            '<span class="bad">Not authorized. Connect again.</span>';
+        }
+        return token;
+      });
+    }
+
+    function updateAuthStatusUI() {
+      if (accessToken && Date.now() < tokenExpiresAt - 60000) {
+        authStatusEl.innerHTML =
+          '<span class="ok">Connected</span>';
+        connectBtn.textContent = "Reconnect";
+      } else {
+        authStatusEl.textContent = "Not connected.";
+        connectBtn.textContent = "Connect";
+      }
+    }
+
+    // OAuth flow
+    function startSpotifyLogin() {
+      if (!CLIENT_ID) {
+        window.alert("CLIENT_ID is not set.");
+        return;
+      }
+
+      var codeVerifier = generateRandomString(64);
+      var state = generateRandomString(16);
+      generateCodeChallenge(codeVerifier).then(function(codeChallenge) {
+        window.localStorage.setItem(VERIFIER_STORAGE_KEY, codeVerifier);
+        window.localStorage.setItem(STATE_STORAGE_KEY, state);
+
+        var params = new URLSearchParams();
+        params.set("response_type", "code");
+        params.set("client_id", CLIENT_ID);
+        params.set("scope", SCOPES);
+        params.set("redirect_uri", REDIRECT_URI);
+        params.set("state", state);
+        params.set("code_challenge_method", "S256");
+        params.set("code_challenge", codeChallenge);
+
+        window.location.href =
+          "https://accounts.spotify.com/authorize?" + params.toString();
+      });
+    }
+
+    function handleRedirectFromSpotify() {
+      var url = new URL(window.location.href);
+      var code = url.searchParams.get("code");
+      var error = url.searchParams.get("error");
+      var state = url.searchParams.get("state");
+
+      if (error) {
+        console.error("Spotify auth error:", error);
+        authStatusEl.innerHTML =
+          '<span class="bad">Spotify authorization failed: ' + error + "</span>";
+        return;
+      }
+      if (!code) return;
+
+      var storedState = window.localStorage.getItem(STATE_STORAGE_KEY);
+      if (!state || !storedState || state !== storedState) {
+        authStatusEl.innerHTML =
+          '<span class="bad">State mismatch. Try again.</span>';
+        return;
+      }
+
+      var codeVerifier = window.localStorage.getItem(VERIFIER_STORAGE_KEY);
+      if (!codeVerifier) {
+        authStatusEl.innerHTML =
+          '<span class="bad">Missing code_verifier. Try again.</span>';
+        return;
+      }
+
+      var params = new URLSearchParams();
+      params.set("client_id", CLIENT_ID);
+      params.set("grant_type", "authorization_code");
+      params.set("code", code);
+      params.set("redirect_uri", REDIRECT_URI);
+      params.set("code_verifier", codeVerifier);
+
+      fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: params.toString()
+      }).then(function(res) {
+        if (!res.ok) {
+          return res.text().then(function(t) {
+            console.error("Token exchange failed", res.status, t);
+            authStatusEl.innerHTML =
+              '<span class="bad">Failed to get token. Check console.</span>';
+          });
+        }
+        return res.json().then(function(data) {
+          storeToken(data);
+          authStatusEl.innerHTML =
+            '<span class="ok">Connected</span>';
+          window.history.replaceState({}, document.title, REDIRECT_URI);
+        });
+      }).catch(function(err) {
+        console.error("Auth callback error", err);
+        authStatusEl.innerHTML =
+          '<span class="bad">Error during login. See console.</span>';
+      });
+    }
+
+    // Parsing & UI
+    var parsedSongs = [];
+
+    function parseSongsFromText(text) {
+      var normalized = String(text)
+        .replace(/\uFEFF/g, "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n");
+
+      var lines = normalized.split("\n");
+      var songs = [];
+
+      for (var i = 0; i < lines.length; i++) {
+        var original = lines[i].trim();
+        if (!original) continue;
+
+        var artist = null;
+        var title = null;
+
+        var dashIndex = original.indexOf(" - ");
+        if (dashIndex > -1) {
+          var artistPart = original.slice(0, dashIndex).trim();
+          var titlePart = original.slice(dashIndex + 3).trim();
+
+          artistPart = artistPart.split(/feat\.|Feat\.|FEAT\.|ft\.|Ft\./)[0];
+          artistPart = artistPart.split(/[,&/]/)[0].trim();
+
+          artist = artistPart || null;
+          title = titlePart || null;
+        } else {
+          title = original;
+        }
+
+        songs.push({
+          index: songs.length + 1,
+          original: original,
+          artist: artist,
+          title: title,
+          status: "pending",
+          spotifyTrack: null,
+          confidence: null,
+          error: null
+        });
+      }
+
+      return songs;
+    }
+
+    function renderSongsTable() {
+      songsTableBody.innerHTML = "";
+      songCountEl.textContent = String(parsedSongs.length);
+
+      if (!parsedSongs.length) {
+        songsSection.classList.add("hidden");
+        return;
+      }
+
+      for (var i = 0; i < parsedSongs.length; i++) {
+        var song = parsedSongs[i];
+        var tr = document.createElement("tr");
+        tr.dataset.index = String(song.index);
+
+        var tdIndex = document.createElement("td");
+        tdIndex.textContent = String(song.index);
+
+        var tdOriginal = document.createElement("td");
+        tdOriginal.textContent = song.original;
+
+        var tdTitle = document.createElement("td");
+        tdTitle.textContent = song.title || "—";
+
+        var tdArtist = document.createElement("td");
+        tdArtist.textContent = song.artist || "—";
+
+        var tdStatus = document.createElement("td");
+        tdStatus.appendChild(createStatusPill(song));
+
+        tr.appendChild(tdIndex);
+        tr.appendChild(tdOriginal);
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdArtist);
+        tr.appendChild(tdStatus);
+
+        songsTableBody.appendChild(tr);
+      }
+
+      songsSection.classList.remove("hidden");
+      matchingHintEl.textContent = "";
+    }
+
+    function createStatusPill(song) {
+      var pill = document.createElement("span");
+      pill.classList.add("song-status-pill");
+      pill.classList.add(song.status);
+
+      var pct = (typeof song.confidence === "number")
+        ? Math.round(song.confidence * 100)
+        : null;
+
+      if (song.status === "pending") {
+        pill.textContent = "Pending";
+      } else if (song.status === "matched") {
+        var track = song.spotifyTrack;
+        var name = (track && track.name) ? track.name : "Matched";
+        var artistName = (track && track.artists && track.artists[0] && track.artists[0].name)
+          ? track.artists[0].name
+          : "";
+
+        var label = "";
+        if (pct !== null) {
+          label += pct + "% · ";
+        }
+        label += name;
+        if (artistName) label += " · " + artistName;
+
+        pill.textContent = label;
+
+        if (typeof song.confidence === "number" &&
+            song.confidence < confidenceThreshold) {
+          pill.classList.add("below-threshold");
+        }
+      } else if (song.status === "not-found") {
+        pill.textContent = "No match";
+      } else if (song.status === "error") {
+        pill.textContent = "Error";
+      }
+      return pill;
+    }
+
+    function updateSongRow(song) {
+      var row = songsTableBody.querySelector('tr[data-index="' + song.index + '"]');
+      if (!row) return;
+      var statusCell = row.lastElementChild;
+      statusCell.innerHTML = "";
+      statusCell.appendChild(createStatusPill(song));
+    }
+
+    // Confidence utilities
+    var TITLE_SOFT_EXTRAS = {
+      remix: true,
+      mix: true,
+      edit: true,
+      version: true,
+      vip: true,
+      rework: true,
+      acoustic: true,
+      radio: true,
+      extended: true,
+      original: true,
+      club: true,
+      live: true,
+      instrumental: true,
+      demo: true,
+      remastered: true
+    };
+
+    var TITLE_STOP_WORDS = {
+      the: true,
+      a: true,
+      an: true,
+      and: true,
+      of: true,
+      to: true,
+      in: true,
+      on: true,
+      for: true
+    };
+
+    function normalizeForMatch(str) {
+      return (str || "")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/\b(feat\.?|ft\.?)\b/g, " ")
+        .replace(/[()\[\]{}]/g, " ")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function tokenizeAll(str) {
+      var norm = normalizeForMatch(str);
+      if (!norm) return [];
+      return norm.split(" ");
+    }
+
+    function buildTitleTokenInfo(str) {
+      var tokens = tokenizeAll(str);
+      var strong = [];
+      for (var i = 0; i < tokens.length; i++) {
+        var t = tokens[i];
+        if (!t) continue;
+        if (!TITLE_STOP_WORDS[t] && !TITLE_SOFT_EXTRAS[t]) {
+          strong.push(t);
+        }
+      }
+      return { tokens: tokens, strong: strong };
+    }
+
+    function normalizeArtistKey(str) {
+      return (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
+    function buildArtistTokens(str) {
+      var norm = normalizeForMatch(str);
+      if (!norm) return [];
+      var parts = norm.split(" ");
+      var out = [];
+      for (var i = 0; i < parts.length; i++) {
+        var t = parts[i];
+        if (!t) continue;
+        if (t === "the" || t === "and") continue;
+        out.push(t);
+      }
+      return out;
+    }
+
+    function stripVersionInfo(title) {
+      if (!title) return "";
+      return title.replace(/\(([^)]*(original|mix|edit|remix|version|vip|radio|extended|club|live)[^)]*)\)/gi, "").trim();
+    }
+
+    function scoreTitleSimilarity(userTitle, trackTitle) {
+      var userInfo = buildTitleTokenInfo(userTitle);
+      var trackInfo = buildTitleTokenInfo(trackTitle);
+      var expStrong = userInfo.strong;
+      var candStrong = trackInfo.strong;
+
+      if (!userInfo.tokens.length || !trackInfo.tokens.length) {
+        return 0;
+      }
+
+      var expSet = {};
+      for (var i = 0; i < expStrong.length; i++) {
+        expSet[expStrong[i]] = true;
+      }
+      var candSet = {};
+      for (var j = 0; j < candStrong.length; j++) {
+        candSet[candStrong[j]] = true;
+      }
+
+      var inter = 0;
+      var key;
+      for (key in expSet) {
+        if (candSet[key]) inter++;
+      }
+
+      var expCount = 0;
+      for (key in expSet) expCount++;
+      var candCount = 0;
+      for (key in candSet) candCount++;
+
+      var strongCoverage = expCount ? inter / expCount : 0;
+      var extraStrong = Math.max(candCount - inter, 0);
+      var penalty = 0;
+
+      if (candCount > 0) {
+        penalty = 0.45 * (extraStrong / candCount);
+      }
+
+      var score = strongCoverage - penalty;
+
+      // Extra penalty when one side says "remix" and the other doesn't.
+      var userNorm = normalizeForMatch(userTitle);
+      var trackNorm = normalizeForMatch(trackTitle);
+      var userHasRemix = userNorm.indexOf("remix") !== -1;
+      var trackHasRemix = trackNorm.indexOf("remix") !== -1;
+      if (userHasRemix !== trackHasRemix) {
+        score -= 0.4;
+      }
+
+      if (score < 0) score = 0;
+      if (score > 1) score = 1;
+      return score;
+    }
+
+    function scoreArtistSimilarity(userArtist, trackArtists) {
+      var expectedKey = normalizeArtistKey(userArtist);
+      var expectedTokens = buildArtistTokens(userArtist);
+      var hasExpected = !!(expectedKey || expectedTokens.length);
+
+      if (!hasExpected) {
+        return { score: 0, hasExpected: false };
+      }
+
+      if (!trackArtists || !trackArtists.length) {
+        return { score: 0, hasExpected: hasExpected };
+      }
+
+      var best = 0;
+
+      for (var i = 0; i < trackArtists.length; i++) {
+        var a = trackArtists[i];
+        var name = a && a.name ? a.name : "";
+        var candKey = normalizeArtistKey(name);
+
+        if (expectedKey && candKey && expectedKey === candKey) {
+          return { score: 1, hasExpected: hasExpected };
+        }
+
+        var candTokens = buildArtistTokens(name);
+        if (!expectedTokens.length || !candTokens.length) continue;
+
+        var expSet = {};
+        for (var e = 0; e < expectedTokens.length; e++) {
+          expSet[expectedTokens[e]] = true;
+        }
+        var candSet = {};
+        for (var c = 0; c < candTokens.length; c++) {
+          candSet[candTokens[c]] = true;
+        }
+
+        var inter = 0;
+        var key;
+        for (key in expSet) {
+          if (candSet[key]) inter++;
+        }
+        var expCount = 0;
+        for (key in expSet) expCount++;
+        var candCount = 0;
+        for (key in candSet) candCount++;
+
+        var coverage = expCount ? inter / expCount : 0;
+        var extra = Math.max(candCount - inter, 0);
+        var penalty = candCount ? 0.6 * (extra / candCount) : 0;
+
+        var score = coverage - penalty;
+        if (score < 0) score = 0;
+        if (score > 1) score = 1;
+
+        if (score > best) best = score;
+      }
+
+      return { score: best, hasExpected: hasExpected };
+    }
+
+    function computeMatchScore(song, track) {
+      var userTitle = song.title || song.original;
+      var trackTitle = track.name || "";
+
+      var titleScore = scoreTitleSimilarity(userTitle, trackTitle);
+      var artistInfo = scoreArtistSimilarity(song.artist || "", track.artists || []);
+      var artistScore = artistInfo.score;
+      var hasExpectedArtist = artistInfo.hasExpected;
+
+      var popularity = (typeof track.popularity === "number") ? track.popularity / 100 : 0;
+
+      var baseCombined =
+        0.72 * titleScore +
+        0.23 * artistScore +
+        0.05 * popularity;
+
+      // Gating: if user provided an artist, gently penalize weak artist matches.
+      var gatingFactor = 1;
+      if (hasExpectedArtist) {
+        gatingFactor = 0.2 + 0.8 * artistScore;
+      }
+
+      var combined = baseCombined * gatingFactor;
+
+      var userInfo = buildTitleTokenInfo(userTitle);
+      var trackInfo = buildTitleTokenInfo(trackTitle);
+
+      var expSet = {};
+      for (var i = 0; i < userInfo.strong.length; i++) {
+        expSet[userInfo.strong[i]] = true;
+      }
+      var candSet = {};
+      for (var j = 0; j < trackInfo.strong.length; j++) {
+        candSet[trackInfo.strong[j]] = true;
+      }
+
+      var inter = 0;
+      var key;
+      for (key in expSet) {
+        if (candSet[key]) inter++;
+      }
+      var expCount = 0;
+      for (key in expSet) expCount++;
+      var candCount = 0;
+      for (key in candSet) candCount++;
+
+      var strongCoverage = expCount ? inter / expCount : 0;
+      var strongExtra = Math.max(candCount - inter, 0);
+      var artistExactOrHigh = !hasExpectedArtist || artistScore >= 0.9;
+
+      if (strongCoverage === 1 && strongExtra === 0 && artistExactOrHigh) {
+        combined = 1;
+      }
+
+      if (combined < 0) combined = 0;
+      if (combined > 1) combined = 1;
+
+      return {
+        combined: combined,
+        titleScore: titleScore,
+        artistScore: artistScore,
+        popularity: popularity
+      };
+    }
+
+    function updateConfidenceSummary() {
+      var sliderPct = parseInt(confidenceSlider.value, 10) || 0;
+      confidenceThreshold = sliderPct / 100;
+      confidenceValueEl.textContent = sliderPct + "%";
+
+      var matched = [];
+      for (var i = 0; i < parsedSongs.length; i++) {
+        var s = parsedSongs[i];
+        if (s.status === "matched" && typeof s.confidence === "number") {
+          matched.push(s);
+        }
+      }
+      var eligible = [];
+      for (var j = 0; j < matched.length; j++) {
+        if (matched[j].confidence >= confidenceThreshold) {
+          eligible.push(matched[j]);
+        }
+      }
+
+      if (!matched.length) {
+        confidenceSummaryEl.textContent =
+          "No matched songs yet.";
+      } else {
+        confidenceSummaryEl.textContent =
+          eligible.length +
+          " of " +
+          matched.length +
+          " matched songs meet " +
+          sliderPct +
+          "% or higher.";
+      }
+
+      for (var k = 0; k < matched.length; k++) {
+        updateSongRow(matched[k]);
+      }
+    }
+
+    // Spotify search helpers
+    function runSearch(searchUrl, song) {
+      return fetch(searchUrl, {
+        headers: {
+          Authorization: "Bearer " + accessToken
+        }
+      }).then(function(res) {
+        if (res.status === 401) {
+          return refreshAccessTokenIfNeeded().then(function(refreshed) {
+            if (!refreshed) {
+              throw new Error("Auth failed");
+            }
+            return null;
+          });
+        }
+        if (res.status === 429) {
+          var retryAfter = res.headers.get("Retry-After");
+          var delayMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : 2000;
+          var err = new Error("Rate limited");
+          err.rateLimit = true;
+          err.delayMs = delayMs;
+          throw err;
+        }
+        if (!res.ok) {
+          throw new Error("Search failed with HTTP " + res.status);
+        }
+        return res.json();
+      }).then(function(data) {
+        if (!data) return null;
+        var items = (data.tracks && data.tracks.items) ? data.tracks.items : [];
+        if (!items.length) return null;
+
+        var best = null;
+        for (var i = 0; i < items.length; i++) {
+          var track = items[i];
+          var scoreObj = computeMatchScore(song, track);
+          if (!best || scoreObj.combined > best.score) {
+            best = {
+              score: scoreObj.combined,
+              track: track
+            };
+          }
+        }
+        return best;
+      });
+    }
+
+    function matchSongOnce(song) {
+      var parts = [];
+      if (song.title) {
+        parts.push('track:"' + song.title.replace(/"/g, '\\\"') + '"');
+      }
+      if (song.artist) {
+        parts.push('artist:"' + song.artist.replace(/"/g, '\\\"') + '"');
+      }
+      var q = parts.length ? parts.join(" ") : (song.original || "");
+
+      var params = new URLSearchParams();
+      params.set("q", q);
+      params.set("type", "track");
+      params.set("limit", "5");
+
+      var searchUrl = "https://api.spotify.com/v1/search?" + params.toString();
+
+      return runSearch(searchUrl, song).then(function(best) {
+        if (!best || best.score < 0.2) {
+          var cleanTitle = stripVersionInfo(song.title || song.original || "");
+          if (!cleanTitle) {
+            return best;
+          }
+          var fallbackQ = cleanTitle;
+          if (song.artist) {
+            fallbackQ += " " + song.artist;
+          }
+          var fallbackParams = new URLSearchParams();
+          fallbackParams.set("q", fallbackQ);
+          fallbackParams.set("type", "track");
+          fallbackParams.set("limit", "5");
+          var fallbackUrl = "https://api.spotify.com/v1/search?" + fallbackParams.toString();
+          return runSearch(fallbackUrl, song).then(function(fallbackBest) {
+            if (!fallbackBest) return best;
+            if (!best || fallbackBest.score > best.score) return fallbackBest;
+            return best;
+          });
+        }
+        return best;
+      });
+    }
+
+    function matchSongWithRetry(song, attempt) {
+      attempt = attempt || 1;
+      return matchSongOnce(song).catch(function(err) {
+        console.error("matchSong error (attempt " + attempt + ")", song.original, err);
+        var delay = 0;
+        if (err && err.rateLimit && err.delayMs) {
+          delay = err.delayMs;
+        } else {
+          delay = attempt * 1000;
+        }
+        if (attempt >= 3) {
+          var e = new Error(err && err.message ? err.message : String(err));
+          e.final = true;
+          throw e;
+        }
+        return new Promise(function(resolve) {
+          setTimeout(function() {
+            resolve(matchSongWithRetry(song, attempt + 1));
+          }, delay);
+        });
+      });
+    }
+
+    function matchSongsOnSpotify() {
+      if (!parsedSongs.length) {
+        window.alert("Upload a text file first.");
+        return;
+      }
+
+      getAccessTokenOrPrompt().then(function(token) {
+        if (!token) return;
+
+        matchSongsBtn.disabled = true;
+        matchSongsBtn.textContent = "Matching...";
+        playlistStatusEl.textContent = "";
+        matchingHintEl.textContent = "Matching with Spotify…";
+
+        var matchedCount = 0;
+        var notFoundCount = 0;
+        var errorCount = 0;
+        var total = parsedSongs.length;
+        var nextIndex = 0;
+        var active = 0;
+        var concurrency = 3;
+
+        function finalize() {
+          matchSongsBtn.disabled = false;
+          matchSongsBtn.textContent = "Match on Spotify";
+
+          var infoParts = [];
+          infoParts.push("Matched: " + matchedCount);
+          if (notFoundCount) infoParts.push("No match: " + notFoundCount);
+          if (errorCount) infoParts.push("Errors: " + errorCount);
+
+          matchingHintEl.textContent = infoParts.join(" · ");
+
+          if (matchedCount > 0) {
+            playlistSection.classList.remove("hidden");
+            updateConfidenceSummary();
+          } else {
+            playlistSection.classList.add("hidden");
+          }
+        }
+
+        function processSong(index) {
+          var song = parsedSongs[index];
+
+          song.status = "pending";
+          song.spotifyTrack = null;
+          song.confidence = null;
+          song.error = null;
+          updateSongRow(song);
+
+          matchSongWithRetry(song, 1).then(function(bestFinal) {
+            if (bestFinal && bestFinal.score >= 0.2) {
+              song.status = "matched";
+              song.spotifyTrack = bestFinal.track;
+              song.confidence = bestFinal.score;
+              matchedCount++;
+            } else {
+              song.status = "not-found";
+              song.spotifyTrack = null;
+              song.confidence = null;
+              notFoundCount++;
+            }
+            updateSongRow(song);
+          }).catch(function(e) {
+            console.error("Error matching", song.original, e);
+            song.status = "error";
+            song.error = e.message || String(e);
+            errorCount++;
+            updateSongRow(song);
+          }).finally(function() {
+            active--;
+            if (nextIndex < total) {
+              launchNext();
+            } else if (active === 0) {
+              finalize();
+            }
+          });
+        }
+
+        function launchNext() {
+          if (nextIndex >= total) {
+            if (active === 0) finalize();
+            return;
+          }
+          var idx = nextIndex++;
+          active++;
+          processSong(idx);
+        }
+
+        var initial = concurrency < total ? concurrency : total;
+        for (var i = 0; i < initial; i++) {
+          launchNext();
+        }
+      });
+    }
+
+    function getCurrentUserProfile(token) {
+      return fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: "Bearer " + token }
+      }).then(function(res) {
+        if (!res.ok) {
+          throw new Error("Failed to fetch current user profile");
+        }
+        return res.json();
+      });
+    }
+
+    function createPlaylistWithTracks() {
+      getAccessTokenOrPrompt().then(function(token) {
+        if (!token) return;
+
+        var eligible = [];
+        for (var i = 0; i < parsedSongs.length; i++) {
+          var s = parsedSongs[i];
+          if (s.status === "matched" &&
+              s.spotifyTrack &&
+              s.spotifyTrack.uri &&
+              typeof s.confidence === "number" &&
+              s.confidence >= confidenceThreshold) {
+            eligible.push({ uri: s.spotifyTrack.uri, song: s });
+          }
+        }
+
+        if (!eligible.length) {
+          window.alert(
+            "No songs meet the current confidence threshold."
+          );
+          return;
+        }
+
+        createPlaylistBtn.disabled = true;
+        createPlaylistBtn.textContent = "Creating…";
+        playlistStatusEl.textContent = "";
+
+        var createdPlaylist = null;
+
+        getCurrentUserProfile(token).then(function(me) {
+          var userId = me.id;
+          var playlistName = playlistNameInput.value.trim() || "Imported from text file";
+
+          return fetch(
+            "https://api.spotify.com/v1/users/" +
+              encodeURIComponent(userId) +
+              "/playlists",
+            {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + token,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                name: playlistName,
+                public: false,
+                description:
+                  "Generated from a text file with confidence-based matching."
+              })
+            }
+          );
+        }).then(function(createRes) {
+          if (!createRes.ok) {
+            throw new Error("Playlist creation failed (HTTP " + createRes.status + ")");
+          }
+          return createRes.json();
+        }).then(function(playlist) {
+          createdPlaylist = playlist;
+          var added = [];
+          var failed = [];
+
+          function addBatch(start) {
+            if (start >= eligible.length) {
+              return Promise.resolve({ added: added, failed: failed });
+            }
+            var slice = eligible.slice(start, start + 80);
+            var uris = [];
+            for (var i = 0; i < slice.length; i++) {
+              uris.push(slice[i].uri);
+            }
+
+            return fetch(
+              "https://api.spotify.com/v1/playlists/" +
+                encodeURIComponent(playlist.id) +
+                "/tracks",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: "Bearer " + token,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ uris: uris })
+              }
+            ).then(function(addRes) {
+              if (!addRes.ok) {
+                return addRes.text().then(function(t) {
+                  console.error("Failed adding tracks batch", t);
+                  for (var i = 0; i < slice.length; i++) {
+                    failed.push(slice[i]);
+                  }
+                });
+              } else {
+                for (var i = 0; i < slice.length; i++) {
+                  added.push(slice[i]);
+                }
+              }
+            }).then(function() {
+              return new Promise(function(resolve) {
+                setTimeout(function() {
+                  resolve(addBatch(start + 80));
+                }, 300);
+              });
+            });
+          }
+
+          return addBatch(0);
+        }).then(function(result) {
+          var added = result.added;
+          var failed = result.failed || [];
+
+          // Retry failed tracks one by one
+          function retrySingle(index) {
+            if (index >= failed.length) {
+              return Promise.resolve();
+            }
+            var item = failed[index];
+            return fetch(
+              "https://api.spotify.com/v1/playlists/" +
+                encodeURIComponent(createdPlaylist.id) +
+                "/tracks",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: "Bearer " + token,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ uris: [item.uri] })
+              }
+            ).then(function(res) {
+              if (!res.ok) {
+                return res.text().then(function(t) {
+                  console.error("Retry failed for", item.song.original, t);
+                });
+              } else {
+                added.push(item);
+              }
+            }).then(function() {
+              return new Promise(function(resolve) {
+                setTimeout(function() {
+                  resolve(retrySingle(index + 1));
+                }, 250);
+              });
+            });
+          }
+
+          return retrySingle(0).then(function() {
+            var finalFailed = [];
+            var addedSet = {};
+            for (var i = 0; i < added.length; i++) {
+              addedSet[added[i].uri] = true;
+            }
+            for (var j = 0; j < eligible.length; j++) {
+              if (!addedSet[eligible[j].uri]) {
+                finalFailed.push(eligible[j]);
+              }
+            }
+
+            var link = (createdPlaylist.external_urls && createdPlaylist.external_urls.spotify)
+              ? createdPlaylist.external_urls.spotify
+              : null;
+
+            var msg = '<span class="ok">Playlist created.</span> Added ' +
+              added.length +
+              " tracks.";
+            if (finalFailed.length) {
+              msg += " Failed " + finalFailed.length + " tracks.";
+            }
+            if (link) {
+              msg += ' <a href="' + link + '" target="_blank" rel="noopener noreferrer">Open</a>';
+            }
+            playlistStatusEl.innerHTML = msg;
+
+            if (finalFailed.length) {
+              var list = "Failed tracks:<br/>";
+              var limit = Math.min(50, finalFailed.length);
+              for (var k = 0; k < limit; k++) {
+                list += "• " + finalFailed[k].song.original + "<br/>";
+              }
+              if (finalFailed.length > limit) {
+                list += "... and " + (finalFailed.length - limit) + " more.";
+              }
+              playlistStatusEl.innerHTML += "<br/><span class='tiny'>" + list + "</span>";
+            }
+          });
+        }).catch(function(err) {
+          console.error("Error creating playlist", err);
+          playlistStatusEl.innerHTML =
+            '<span class="bad">Error creating playlist: ' +
+            (err.message || err) +
+            "</span>";
+        }).finally(function() {
+          createPlaylistBtn.disabled = false;
+          createPlaylistBtn.textContent = "Create";
+        });
+      });
+    }
+
+    // Event listeners & init
+    connectBtn.addEventListener("click", startSpotifyLogin);
+
+    fileInput.addEventListener("change", function(event) {
+      var file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (!file.type.match(/^text\//) && !file.name.match(/\\.txt$/i)) {
+        fileStatusEl.innerHTML =
+          '<span class="bad">Please select a .txt or plain text file.</span>';
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var text = e.target.result || "";
+        parsedSongs = parseSongsFromText(String(text));
+        if (!parsedSongs.length) {
+          fileStatusEl.innerHTML =
+            '<span class="bad">No non-empty lines found.</span>';
+          songsSection.classList.add("hidden");
+          playlistSection.classList.add("hidden");
+          return;
+        }
+        fileStatusEl.innerHTML =
+          '<span class="ok">Loaded ' +
+          parsedSongs.length +
+          " songs.</span>";
+        renderSongsTable();
+        playlistSection.classList.add("hidden");
+      };
+      reader.onerror = function() {
+        fileStatusEl.innerHTML =
+          '<span class="bad">Failed to read file.</span>';
+      };
+      reader.readAsText(file);
+    });
+
+    matchSongsBtn.addEventListener("click", matchSongsOnSpotify);
+    createPlaylistBtn.addEventListener("click", createPlaylistWithTracks);
+
+    confidenceSlider.addEventListener("input", function() {
+      updateConfidenceSummary();
+    });
+
+    window.addEventListener("load", function() {
+      loadStoredToken();
+      updateAuthStatusUI();
+      handleRedirectFromSpotify();
+      updateConfidenceSummary();
+    });
+  </script>
+</body>
+</html>
